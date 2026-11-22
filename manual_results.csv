@@ -1,0 +1,2 @@
+Medicine ID,Medicine Name,Batch Number,ATC,ATC Status,MACS,MACS Status,Counterfeit,Risk,PTI,PTI Status,Updated Trust,Updated PTI,Recovery,Recovery Status,Network Status,Detected Problems
+1234,paracetamol,batch3939,69.17,MONITOR,80,GENUINE,NO,LOW,73.67,TRUSTED,69.17,73.67,71.42,STABLE,Network Stable,Package integrity failed

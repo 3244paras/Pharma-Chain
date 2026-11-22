@@ -1,0 +1,6 @@
+Recovery Status,Number of Medicines,Percentage,Table
+HEALTHY,0,0.0,Recovery Status
+STABLE,1,100.0,Recovery Status
+RECOVERING,0,0.0,Recovery Status
+DEGRADED,0,0.0,Recovery Status
+CRITICAL,0,0.0,Recovery Status

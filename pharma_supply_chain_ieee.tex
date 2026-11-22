@@ -1,0 +1,99 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\begin{document}
+
+\title{PharmaChain: An Explainable Risk and Traceability Platform for Pharmaceutical Supply Chains}
+
+\author{\IEEEauthorblockN{Author Name}
+\IEEEauthorblockA{Department and Institution\\
+City, Country\\
+email address}}
+
+\maketitle
+
+\begin{abstract}
+Pharmaceutical supply-chain checks must combine medicine identity, package and batch evidence, product handling, and the history of supply-chain participants. This paper presents PharmaChain, a prototype research platform implemented as a Streamlit application with a persistent medicine database and a local SHA-256 hash-linked audit chain. It accepts manual, barcode, timestamp, and sensor-file evidence; computes medicine authenticity, adaptive trust, overall trust, and risk scores; and exposes explanations, participant histories, anomaly views, investigation cases, and regulator-oriented summaries. A separate research module generates labeled synthetic records and evaluates a random-forest classifier using a stratified holdout split. The prototype is designed to make evidence provenance and rule-based decisions inspectable. It is not a decentralized production blockchain, a validated counterfeit detector, or a regulatory certification system. Because the machine-learning labels are generated from simulation rules and no evaluated metric output is supplied with the application source, this paper reports the implemented evaluation protocol without claiming predictive performance.
+\end{abstract}
+
+\begin{IEEEkeywords}
+pharmaceutical supply chain, traceability, blockchain, explainable risk, synthetic data, medicine authenticity
+\end{IEEEkeywords}
+
+\section{Introduction}
+Medicine supply chains span manufacturers, distributors, pharmacies, and other participants. Product identity, batch status, expiry, and handling conditions can be recorded at different points and in different formats. A review process that cannot connect these records may make it difficult to explain why a transaction was accepted or flagged. Substandard and falsified medical products remain a public-health concern, and the World Health Organization emphasizes surveillance, detection, and response capabilities \cite{who}.
+
+Blockchain-style ledgers can make changes to linked records detectable, but they cannot establish that a reported observation is true. Nor does a local hash chain provide the replication, governance, or independent validation associated with a consortium ledger \cite{nist}. PharmaChain addresses this narrower engineering problem: bringing evidence capture, transparent scoring, persistent records, and review tools into one prototype.
+
+This paper describes the application currently implemented in \texttt{pharma\_gui.py}. Its contributions are: (1) an evidence model that records data sources and environmental excursions alongside medicine attributes; (2) explicit, bounded scoring and explainable risk rules that incorporate participant history; (3) a local hash-linked audit chain and workflow for investigation; and (4) a separate, reproducible-by-seed synthetic evaluation workflow whose labels are clearly distinguished from real pharmaceutical ground truth. This is a system description and design paper; it makes no claim of measured real-world detection performance.
+
+\section{System Architecture}
+\subsection{Application and Persistence}
+The application is written in Python using Streamlit. SQLite stores medicine transactions and investigation cases. A transaction includes medicine and batch identifiers, manufacturer, distributor and pharmacy, expiry, verification flags, location coordinates, environmental summaries, transport duration, evidence-source labels, score components, detected problems, risk explanations, and hash fields. Database initialization adds missing columns to support schema evolution and creates indexes for medicine identifiers, batches, hashes, manufacturers, and distributors.
+
+When a record is saved, the application reads the preceding record's hash and calculates a SHA-256 digest over the sorted transaction fields together with the preceding hash. The digest and previous hash are stored with the transaction. Chain verification scans records in insertion order, checks the previous-hash link, and recomputes each digest. A legacy migration control can rebuild hashes for older records; this operation changes the audit history and is intended only for schema migration.
+
+The current design is a centralized local database with a hash-linked audit trail. It has no independent validating nodes, digitally signed identities, consensus protocol, access-control model, or protection against a privileged database operator rewriting all records and hashes. It therefore offers tamper evidence for ordinary record changes, not decentralized immutability.
+
+\subsection{Evidence Capture and User Views}
+The medicine-check workflow accepts identity and batch fields, participant names, expiry, and verification states. Identity may be supported by a verified QR code, a GS1/barcode scan, a manual identity check, or a batch and manufacturer record. When optional computer-vision and barcode libraries are available, an uploaded image can be decoded; a decoded identifier can populate the record. The application does not independently query a manufacturer or regulatory registry to validate that identifier.
+
+Environmental evidence can be entered manually, simulated for research, or imported from a CSV containing temperature and humidity columns. For a sensor file, the application computes mean, minimum, maximum, and counts of values outside its configured preferred ranges. Transport duration is computed from dispatch and receipt timestamps or entered manually; a simulation option is explicitly labeled as such. Source labels and ranges are stored with the transaction to preserve provenance.
+
+The platform provides overview, dashboard, medicine search, supply-chain map, audit, anomaly, participant profile, risk network, investigation case, regulator, and research evaluation views. Users can export transaction and case records. Medium- and high-risk results can be promoted to an investigation case. These are application workflows; the prototype does not notify or enforce actions at external organizations.
+
+\section{Scoring and Risk Methods}
+\subsection{Medicine Authenticity Confidence Score}
+The Medicine Authenticity Confidence Score (MACS) sums seven evidence contributions. Identity, package, batch, expiry, temperature, humidity, and transport contribute at most 20, 15, 20, 10, 15, 10, and 10 points, respectively. The environmental scores are 100\% of their component weight inside preferred ranges, 60\% inside wider acceptable ranges, and zero outside those ranges. Transport receives 10 points at 24 h or less, 5 points up to 48 h, and zero thereafter. The score is bounded to $[0,100]$:
+\begin{equation}
+ M=\operatorname{clip}_{[0,100]}(I+P+B+E+T+H+L),
+ \label{eq:macs}
+\end{equation}
+where $I,P,B,E,T,H,L$ denote identity, package, batch, expiry, temperature, humidity, and logistics evidence contributions. Status bands are “genuine” at 80 or above, “suspicious” from 60 through 79.99, and “counterfeit risk” below 60. These labels are rule outputs, not verified authenticity findings.
+
+\subsection{Adaptive Trust and Participant History}
+Medicine trust $U$ combines identity, package, batch, environmental, transport, and expiry evidence. The components receive weights 0.20, 0.20, 0.20, 0.15, 0.10, 0.10, and 0.05, respectively. The application computes verification success as the fraction of identity, package, and batch checks that pass, and medicine integrity as 50 points each for package and batch. Compliance history averages up to the 20 most recent records for matching manufacturer, distributor, and pharmacy identities. If no matching history exists, the default is 70.
+
+For the most relevant participant, the application reconstructs trust from prior events, starting from 70. A low-risk event adds three points, medium risk subtracts eight, and high risk subtracts 20, with values bounded to $[0,100]$. Where a stored updated-trust value exists, the estimate blends 60\% of the event-adjusted value and 40\% of that stored value. Adaptive Trust Consensus (ATC) is:
+\begin{equation}
+ A=\operatorname{clip}_{[0,100]}(0.35U+0.20S+0.15J+0.15C+0.15H_p),
+ \label{eq:atc}
+\end{equation}
+where $S$ is verification success, $J$ is integrity, $C$ is recent-record compliance, and $H_p$ is historical participant trust. The application labels ATC values of at least 70 as trusted, 50--69.99 as monitor, and below 50 as suspicious.
+
+\subsection{Risk Classification, PTI, and Response}
+The application computes an additive risk score from identity failure (25), batch failure (25), package failure (15), expiry failure (15), unsafe average temperature (10), unsafe average humidity (10), transport longer than 72 h (10), and temperature and humidity excursion counts (up to 20 points each, at five points per excursion). Repeated participant risk can add 15 points and a duplicate medicine/batch record can add 10 points. The score is capped at 100. Categorical risk uses MACS and evidence conditions: high risk is assigned for MACS below 40 or simultaneous identity, package, and batch failures; medium risk is assigned for MACS below 80, at least two of those verification failures, or transport longer than 72 h; otherwise risk is low. The code adds a further 20 points to a high-risk score, subject to the cap.
+
+The Pharma Trust Index (PTI) combines ATC, MACS, and recent-record compliance with a categorical penalty:
+\begin{equation}
+ Q=\operatorname{clip}_{[0,100]}(0.40A+0.40M+0.20C-R),
+ \label{eq:pti}
+\end{equation}
+where $R$ is 20 for high risk, 8 for medium risk, and zero for low risk. The platform displays the score with rule-based status bands. Self-healing is also rule-based: high risk applies trust and PTI penalties of 20 and 15 points; medium risk applies 8 and 6 points; and flagged low-risk cases apply 3 and 2 points. When a participant has at least two prior all-low-risk records and the current event is not flagged, the response adds a capped recovery bonus. The resulting recovery score is the mean of updated trust and PTI. This feature prioritizes monitoring and investigation; it does not repair records, remove a participant from an external network, or establish recovery in a clinical sense.
+
+For each result, the application records detected anomalies and displays weighted risk reasons. Duplicate identifiers, repeated participant risk, expiry, threshold excursions, and failed verification evidence therefore appear as explainable factors alongside aggregate scores. The explanatory list is rule-generated and should not be interpreted as causal attribution.
+
+\section{Research Evaluation Module}
+The application includes a controlled simulation separate from the transaction verification workflow. It generates a user-selected number of synthetic records (from 200 to 5000) using a selected random seed. A hidden simulation state marks a record as adverse with probability 0.35. The generator then samples verification outcomes, expiry, environmental values, transport duration, excursion counts, and historical trust from different ranges for adverse and non-adverse records. A severity rule derived from these same synthetic attributes produces the binary label.
+
+The random-forest experiment uses ten recorded features, stratifies a 75/25 train-test split with a fixed split seed, and trains 250 trees with maximum depth 8 and balanced class weights. It reports accuracy, precision, recall, F1, a confusion matrix, and feature importance. The generator's ground truth is a simulation rule, not a label from laboratory testing, regulatory surveillance, or confirmed counterfeit investigations. As no run output or independently verified dataset accompanies the source used for this paper, we do not report model scores. The interface itself labels this distinction and advises replacing synthetic labels before making a publishable accuracy claim.
+
+\section{Discussion}
+The system's main engineering value is the connection between input provenance, explicit scoring, saved events, and review workflows. The user can see whether evidence was entered manually, derived from timestamps, supplied through a sensor file, or simulated. The audit view checks for hash mismatches; anomaly and regulator views aggregate flagged records; and case management can preserve a review queue. In contrast to a single opaque risk label, the application exposes score components and reasons.
+
+The limits are substantial. Risk weights and cutoffs are developer-defined and have not been clinically, statistically, or regulatorily validated. A QR or barcode decode proves only that a code was read, not that it was issued by an authorized source. Sensor summaries cannot establish calibration or chain of custody. Participant matching relies on text names, and the local SQLite deployment has no authentication, authorization, encryption-at-rest design, or multi-party governance. Historical scores can also depend on prior records and their ordering. Finally, synthetic machine-learning performance would measure agreement with the generator's own label rule and can be inflated by that construction; it cannot be generalized to medicine authenticity.
+
+\section{Conclusion}
+PharmaChain is a Streamlit research prototype for recording pharmaceutical evidence, calculating transparent rule-based trust and risk indicators, and reviewing records through dashboards, participant histories, investigation cases, and a local hash-linked audit chain. It also provides a seeded synthetic-data workflow for demonstrating a machine-learning evaluation procedure. The implementation supports exploration of integrated traceability and review, but it does not establish real-world counterfeit-detection efficacy or decentralized ledger security. Future work should validate the scoring rules with domain experts, use independently confirmed labels, report repeated-run uncertainty, harden identity and access controls, and evaluate a governed multi-organization deployment.
+
+\begin{thebibliography}{00}
+\bibitem{who} World Health Organization, “Substandard and falsified medical products,” Fact sheet, Dec. 3, 2024. [Online]. Available: \url{https://www.who.int/news-room/fact-sheets/detail/substandard-and-falsified-medical-products}
+\bibitem{nist} D. Yaga, P. Mell, N. Roby, and K. Scarfone, “Blockchain technology overview,” National Institute of Standards and Technology, NISTIR 8202, Oct. 2018, doi: 10.6028/NIST.IR.8202.
+\end{thebibliography}
+
+\end{document}

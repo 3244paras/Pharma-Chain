@@ -1,0 +1,21 @@
+Metric,Average,Minimum,Maximum,Table,Authenticity Classification,Number of Medicines,Percentage,Risk Level,Recovery Status,Framework Component,Average Score
+ATC,69.17,69.17,69.17,Score Statistics,,,,,,,
+MACS,80.0,80.0,80.0,Score Statistics,,,,,,,
+PTI,73.67,73.67,73.67,Score Statistics,,,,,,,
+Recovery Score,71.42,71.42,71.42,Score Statistics,,,,,,,
+,,,,Authenticity Classification,NO,1.0,100.0,,,,
+,,,,Authenticity Classification,POSSIBLE,0.0,0.0,,,,
+,,,,Authenticity Classification,YES,0.0,0.0,,,,
+,,,,Risk Level,,1.0,100.0,LOW,,,
+,,,,Risk Level,,0.0,0.0,MEDIUM,,,
+,,,,Risk Level,,0.0,0.0,HIGH,,,
+,,,,Recovery Status,,0.0,0.0,,HEALTHY,,
+,,,,Recovery Status,,1.0,100.0,,STABLE,,
+,,,,Recovery Status,,0.0,0.0,,RECOVERING,,
+,,,,Recovery Status,,0.0,0.0,,DEGRADED,,
+,,,,Recovery Status,,0.0,0.0,,CRITICAL,,
+,,,,Framework Components,,,,,,ATC,69.17
+,,,,Framework Components,,,,,,MACS,80.0
+,,,,Framework Components,,,,,,PTI,73.67
+,,,,Framework Components,,,,,,Self-Healing Recovery,71.42
+,,,,Framework Components,,,,,,Overall Framework,73.57

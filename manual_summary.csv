@@ -1,0 +1,2 @@
+Dataset,Total Records,Average ATC,Minimum ATC,Maximum ATC,Average MACS,Minimum MACS,Maximum MACS,Average PTI,Minimum PTI,Maximum PTI,Average Recovery,Minimum Recovery,Maximum Recovery
+manual_results.csv,1,69.17,69.17,69.17,80.0,80,80,73.67,73.67,73.67,71.42,71.42,71.42
